@@ -78,7 +78,7 @@ class GenericViewSet(object):
             from sanic.response import json
 
             from restic import exceptions
-            form restic.viewsets import GenericViewSet
+            from restic.viewsets import GenericViewSet
 
             CATS = [
                 {'id': 1, 'name': 'Kitty One'},
@@ -87,7 +87,7 @@ class GenericViewSet(object):
 
             class ItemsViewSet(GenericViewSet):
                 def list(self):
-                    return CATS
+                    return json(CATS)
 
                 def retrieve(self, pk):
                     cats = [cat for cat in CATS if cat['id'] == pk]
