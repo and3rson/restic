@@ -23,6 +23,7 @@ Simple example
     ]
 
     class ItemsViewSet(GenericViewSet):
+        # Viewset defines operations on the model list & individual models.
         def list(self):
             return json(CATS)
 
@@ -56,6 +57,7 @@ Using Serializer and ModelViewSet
 
 
     class ItemSerializer(Serializer):
+        # Serializer defines how shall the CRUD of your model be executed.
         def create(self, data):
             model = dict(data)
             try:
@@ -76,6 +78,10 @@ Using Serializer and ModelViewSet
 
 
     class ItemsViewSet(ModelViewSet):
+        # ModelViewSet defines how to get your models in order to display them.
+        # You don't need to define retrieve/list/create/update/destroy
+        # methods for ModelViewSet: Restic will automatically handle those
+        # operations with the help of serializer.
         def get_serializer_class(self):
             return ItemSerializer
 
