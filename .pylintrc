@@ -4,6 +4,7 @@ max-parents = 10
 
 [messages control]
 disable =
+    unused-argument,
     too-few-public-methods,
     too-many-public-methods,
     too-many-instance-attributes,
