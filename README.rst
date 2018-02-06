@@ -1,4 +1,4 @@
-Restic
+RESTic
 ======
 
 A loose & flexible REST framework for Sanic. Inspired by Django REST Framework.
