@@ -51,13 +51,16 @@ Using Serializer and ModelViewSet
 
     from restic import exceptions
     from restic.viewsets import ModelViewSet
-    from restic.serializers import Serializer
+    from restic.serializers import Serializer, Field
 
     MODELS = [{'id': 1, 'name': 'Foo'}, {'id': 2, 'name': 'Foo'}]
 
 
     class ItemSerializer(Serializer):
         # Serializer defines how shall the CRUD of your model be executed.
+        id = Field()
+        name = Field()
+
         def create(self, data):
             model = dict(data)
             try:
@@ -72,9 +75,6 @@ Using Serializer and ModelViewSet
 
         def destroy(self):
             MODELS.remove(self.instance)
-
-        def serialize(self):
-            return self.instance
 
 
     class ItemsViewSet(ModelViewSet):
