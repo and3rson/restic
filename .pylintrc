@@ -1,0 +1,15 @@
+[pylint]
+max-line-length = 120
+max-parents = 10
+
+[messages control]
+disable =
+    too-few-public-methods,
+    too-many-public-methods,
+    too-many-instance-attributes,
+    no-self-use,
+    broad-except
+
+[MISCELLANEOUS]
+# List of note tags to take in consideration, separated by a comma.
+notes=FIXME,XXX
