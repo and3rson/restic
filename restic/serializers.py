@@ -3,6 +3,8 @@ Serializers logic.
 """
 from collections import Mapping
 
+from restic.exceptions import BadRequest
+
 
 class Field(object):
     """
@@ -21,32 +23,33 @@ class Field(object):
             name = Field()
             breed = Field()
     """
-    def __init__(self, read_only=False):
+    def __init__(self, required=True, read_only=False):
+        self.required = required
         self.read_only = read_only
 
-    def get_model_value(self, instance, name):
+    def get_model_value(self, model, name):
         """
         Return model field by name.
 
         Because model can be either dict-like object or an object,
         we check if we should use ``getattr`` or ``getitem`` to retrieve it.
         """
-        if isinstance(instance, Mapping):
-            return instance[name]
-        return getattr(instance, name)
+        if isinstance(model, Mapping):
+            return model[name]
+        return getattr(model, name)
 
-    def set_model_value(self, instance, name, value):
+    def set_model_value(self, model, name, value):
         """
         Set model field by name.
 
         Because model can be either dict-like object or an object,
         we check if we should use ``setattr`` or ``setitem`` to retrieve it.
         """
-        if isinstance(instance, Mapping):
-            instance[name] = value
-        return setattr(instance, name, value)
+        if isinstance(model, Mapping):
+            model[name] = value
+        return setattr(model, name, value)
 
-    def to_representation(self, serializer, instance, name):
+    def to_representation(self, serializer, model, name):
         """
         Return a representation of data in this field.
 
@@ -55,9 +58,9 @@ class Field(object):
         For example: format ``datetime`` object in ``value``
         and return it as ``str``.
         """
-        return self.get_model_value(instance, name)
+        return self.get_model_value(model, name)
 
-    def to_internal_value(self, serializer, instance, name, data):
+    def to_internal_value(self, serializer, model, name, data):
         """
         Parse user data and convert it into internal model value.
 
@@ -67,7 +70,7 @@ class Field(object):
         as ``datetime`` object.
         """
         if not self.read_only:
-            self.set_model_value(instance, name, data)
+            self.set_model_value(model, name, data)
 
 
 class SerializerMethodField(Field):
@@ -93,18 +96,21 @@ class SerializerMethodField(Field):
             def get_full_name(self, instance):
                 return instance.first_name + instance.last_name
     """
-    def __init__(self, method_name=None):
+    def __init__(self, method_name=None, required=False):
         self.method_name = method_name
-        super(SerializerMethodField, self).__init__(read_only=True)
+        super(SerializerMethodField, self).__init__(
+            required=required,
+            read_only=True
+        )
 
-    def to_representation(self, serializer, instance, name):
+    def to_representation(self, serializer, model, name):
         """
         Return a result of calling ``method`` for attached instance.
         """
         method_name = self.method_name
         if method_name is None:
             method_name = 'get_' + name
-        return getattr(serializer, method_name)(instance)
+        return getattr(serializer, method_name)(model)
 
 
 class Serializer(object):
@@ -160,6 +166,30 @@ class Serializer(object):
             ]
         return self._serialize(self.instance)
 
+    def _validate(self, data, allow_partial=False):
+        """
+        Process data through all the fields and return validated data.
+        """
+        validated_data = {}
+        errors = {}
+        for name, field in self.fields.items():
+            if field.read_only:
+                continue
+
+            if not allow_partial:
+                if field.required and name not in data:
+                    errors[name] = 'This field is required.'
+
+            if name not in data:
+                continue
+
+            validated_data[name] = data[name]
+
+        if errors:
+            raise BadRequest(message='Model validation failed', details=errors)
+
+        return validated_data
+
     def _serialize(self, instance):
         """
         Serialize a single model.
@@ -170,13 +200,13 @@ class Serializer(object):
             in self.fields.items()
         }
 
-    def create(self, data):
+    def create(self, validated_data):
         """
         Perform create logic for attached model.
         """
         raise NotImplementedError()
 
-    def update(self, data):
+    def update(self, validated_data):
         """
         Perform update logic for attached model.
         """
@@ -192,13 +222,15 @@ class Serializer(object):
         """
         Create a model and update instance value.
         """
-        self.instance = self.create(data)
+        validated_data = self._validate(data)
+        self.instance = self.create(validated_data)
 
     def do_update(self, data):
         """
         Update a model.
         """
-        self.update(data)
+        validated_data = self._validate(data, allow_partial=True)
+        self.update(validated_data)
 
     def do_destroy(self):
         """

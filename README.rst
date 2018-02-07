@@ -58,11 +58,11 @@ Using Serializer and ModelViewSet
 
     class ItemSerializer(Serializer):
         # Serializer defines how shall the CRUD of your model be executed.
-        id = Field()
-        name = Field()
+        id = Field(read_only=True)
+        name = Field(required=True)
 
-        def create(self, data):
-            model = dict(data)
+        def create(self, validated_data):
+            model = dict(validated_data)
             try:
                 model['id'] = max([model['id'] for model in MODELS]) + 1
             except ValueError:
@@ -70,8 +70,8 @@ Using Serializer and ModelViewSet
             MODELS.append(model)
             return model
 
-        def update(self, data):
-            self.instance['name'] = data['name']
+        def update(self, validated_data):
+            self.instance['name'] = validated_data.get('name', self.instance['name'])
 
         def destroy(self):
             MODELS.remove(self.instance)

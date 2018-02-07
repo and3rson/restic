@@ -142,7 +142,10 @@ class GenericViewSet(object):
                     return handler(*args, **kwargs)
                 raise exceptions.MethodNotAllowed()
             except exceptions.APIException as error:
-                return json(dict(error=error.detail), status=error.status)
+                return json(dict(
+                    message=error.message,
+                    details=error.details
+                ), status=error.status)
         return dispatcher
 
 

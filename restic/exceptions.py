@@ -8,11 +8,13 @@ class APIException(Exception):
     Defaults to "Server Error".
     """
     status = 500
-    detail = 'Server error'
+    message = 'Server error'
+    details = None
 
-    def __init__(self, detail=None):
-        if detail is not None:
-            self.detail = detail
+    def __init__(self, message=None, details=None):
+        if message is not None:
+            self.message = message
+        self.details = details
         super(APIException, self).__init__(self)
 
 
@@ -21,7 +23,7 @@ class BadRequest(APIException):
     "Bad Request" exception.
     """
     status = 400
-    detail = 'Bad Request'
+    message = 'Bad Request'
 
 
 class Unauthorized(APIException):
@@ -29,7 +31,7 @@ class Unauthorized(APIException):
     "Unauthorized" exception.
     """
     status = 401
-    detail = 'Unauthorized'
+    message = 'Unauthorized'
 
 
 class Forbidden(APIException):
@@ -37,7 +39,7 @@ class Forbidden(APIException):
     "Forbidden" exception.
     """
     status = 403
-    detail = 'Forbidden'
+    message = 'Forbidden'
 
 
 class NotFound(APIException):
@@ -45,7 +47,7 @@ class NotFound(APIException):
     "Not Found" exception.
     """
     status = 404
-    detail = 'Not Found'
+    message = 'Not Found'
 
 
 class MethodNotAllowed(APIException):
@@ -53,4 +55,4 @@ class MethodNotAllowed(APIException):
     "Method Not Allowed" exception.
     """
     status = 405
-    detail = 'Method Not Allowed'
+    message = 'Method Not Allowed'
