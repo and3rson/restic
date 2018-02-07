@@ -2,8 +2,19 @@
 Serializers logic.
 """
 from collections import Mapping
+from datetime import datetime
 
 from restic.exceptions import BadRequest
+
+
+class ValidationError(Exception):
+    """
+    Field validation error.
+
+    Should be raised by ``to_internal_value`` method of fields
+    if the user input is not valid for this field.
+    """
+    pass
 
 
 class Field(object):
@@ -60,17 +71,14 @@ class Field(object):
         """
         return self.get_model_value(model, name)
 
-    def to_internal_value(self, serializer, model, name, data):
+    def to_internal_value(self, serializer, name, data):
         """
         Parse user data and convert it into internal model value.
 
-        Result will be set into model as an attribute or key.
-
-        For example: parse ``data`` as timestamp and return it
+        For example: parse ``data`` string as timestamp and return it
         as ``datetime`` object.
         """
-        if not self.read_only:
-            self.set_model_value(model, name, data)
+        return data
 
 
 class SerializerMethodField(Field):
@@ -98,10 +106,7 @@ class SerializerMethodField(Field):
     """
     def __init__(self, method_name=None, required=False):
         self.method_name = method_name
-        super(SerializerMethodField, self).__init__(
-            required=required,
-            read_only=True
-        )
+        super(SerializerMethodField, self).__init__(required=required, read_only=True)
 
     def to_representation(self, serializer, model, name):
         """
@@ -111,6 +116,77 @@ class SerializerMethodField(Field):
         if method_name is None:
             method_name = 'get_' + name
         return getattr(serializer, method_name)(model)
+
+
+class NaiveDateTimeField(Field):
+    """
+    Naive datetime field.
+
+    Provides serializing/deserializing of ``datetime`` objects.
+
+    ``format_str`` can be a string or list/tuple of strings. I this case
+    all formats be used to try to unserialize datetime, but only first
+    will be used to serialize it into string.
+    """
+    DEFAULT_FORMATS = (
+        '%Y-%m-%dT%H:%M:%S.%f',
+        '%Y-%m-%d %H:%M:%S.%f',
+        '%Y-%m-%dT%H:%M:%S',
+        '%Y-%m-%d %H:%M:%S'
+    )
+
+    def __init__(self, formats=DEFAULT_FORMATS, required=False, read_only=False):
+        if not isinstance(formats, (list, tuple)):
+            formats = [formats]
+        assert formats, 'At least one datetime format is required!'
+        self.formats = formats
+        super(NaiveDateTimeField, self).__init__(required=required, read_only=read_only)
+
+    def to_representation(self, serializer, model, name):
+        """
+        Return the datetime object converted to string.
+        """
+        value = self.get_model_value(model, name)
+        assert isinstance(value, datetime), 'Expected datetime, got {}'.format(repr(value))
+        assert value.tzinfo is None, 'Expected naive datetime, got timezone-aware datetime'
+        return value.strftime(self.formats[0])
+
+    def to_internal_value(self, serializer, name, data):
+        """
+        Parse string and return datetime object.
+        """
+        for format_str in self.formats:
+            try:
+                return datetime.strptime(data, format_str)
+            except (ValueError, TypeError):
+                continue
+        raise ValidationError('Could not parse {}, formats tried: {}.'.format(
+            repr(data),
+            repr(self.formats)
+        ))
+
+
+class AwareDateTimeField(NaiveDateTimeField):
+    """
+    Timezone-aware datetime field.
+
+    Provides serializing/deserializing of ``datetime`` objects with timezone.
+    """
+    DEFAULT_FORMATS = (
+        '%Y-%m-%dT%H:%M:%S.%f%z',
+        '%Y-%m-%d %H:%M:%S.%f%z',
+        '%Y-%m-%dT%H:%M:%S%z',
+        '%Y-%m-%d %H:%M:%S%z',
+    )
+
+    def to_representation(self, serializer, model, name):
+        """
+        Return the datetime object converted to string.
+        """
+        value = self.get_model_value(model, name)
+        assert isinstance(value, datetime), 'Expected datetime, got {}'.format(repr(value))
+        assert value.tzinfo is not None, 'Expected timezone-aware datetime, got naive datetime'
+        return value.strftime(self.formats[0])
 
 
 class Serializer(object):
@@ -179,11 +255,19 @@ class Serializer(object):
             if not allow_partial:
                 if field.required and name not in data:
                     errors[name] = 'This field is required.'
+                    continue
 
             if name not in data:
                 continue
 
-            validated_data[name] = data[name]
+            try:
+                validated_data[name] = field.to_internal_value(
+                    self,
+                    name,
+                    data[name]
+                )
+            except ValidationError as error:
+                errors[name] = str(error)
 
         if errors:
             raise BadRequest(message='Model validation failed', details=errors)
