@@ -34,7 +34,7 @@ class Field(object):
             name = Field()
             breed = Field()
     """
-    def __init__(self, required=True, read_only=False):
+    def __init__(self, required=False, read_only=False):
         self.required = required
         self.read_only = read_only
 
@@ -227,7 +227,6 @@ class Serializer(object):
             field = getattr(self, name)
             if isinstance(field, Field):
                 self.fields[name] = field
-        print(self.fields)
 
     def serialize(self):
         """

@@ -153,19 +153,19 @@ class GenericModelViewSet(GenericViewSet):
     """
     Generic class for implementing model-based viewsets.
     """
-    def get_serializer_class(self):
+    def get_serializer_class(self):  # pragma: no cover
         """
         Return :class:`~restic.serializers.Serializer` class for this viewset.
         """
         raise NotImplementedError()
 
-    def get_models(self):
+    def get_models(self):  # pragma: no cover
         """
         Return a list of models.
         """
         raise NotImplementedError()
 
-    def get_model(self, pk):
+    def get_model(self, pk):  # pragma: no cover
         """
         Return a single model matched by ID.
         Return ``None`` if model is not found.
@@ -213,7 +213,7 @@ class CreateModelMixin(object):
         """
         serializer = self.get_serializer_class()()
         serializer.do_create(self.get_data())
-        return json(serializer.serialize())
+        return json(serializer.serialize(), status=201)
 
 
 class RetrieveModelMixin(object):
